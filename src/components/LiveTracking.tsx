@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Clock, Zap, Bell, Navigation, Gauge, Maximize2, Mini
 import { Bus, BusStop } from '../types';
 import { calculateDistance, calculateETA, formatETA } from '../utils/distanceCalculator';
 import { mockRoutes } from '../data/mockData';
+import { apiService } from '../services/api';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -79,29 +80,45 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
   // Simulate real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
-      setBus(prevBus => {
-        // Simulate movement along the route
-        const latVariation = (Math.random() - 0.5) * 0.002;
-        const lonVariation = (Math.random() - 0.5) * 0.002;
-        const speedVariation = Math.max(0, prevBus.current_location.speed + (Math.random() - 0.5) * 15);
+      // Try to fetch real data from API, fallback to simulation
+      apiService.getBusLocation(bus.device_id)
+        .then(locationData => {
+          setBus(prevBus => ({
+            ...prevBus,
+            current_location: {
+              ...prevBus.current_location,
+              lat: locationData.lat,
+              lon: locationData.lon,
+              speed: locationData.speed,
+              updated: locationData.updated
+            }
+          }));
+          setMapCenter([locationData.lat, locationData.lon]);
+        })
+        .catch(() => {
+          // Fallback to simulation if API fails
+          setBus(prevBus => {
+            const latVariation = (Math.random() - 0.5) * 0.002;
+            const lonVariation = (Math.random() - 0.5) * 0.002;
+            const speedVariation = Math.max(0, prevBus.current_location.speed + (Math.random() - 0.5) * 15);
 
-        const newLat = prevBus.current_location.lat + latVariation;
-        const newLon = prevBus.current_location.lon + lonVariation;
+            const newLat = prevBus.current_location.lat + latVariation;
+            const newLon = prevBus.current_location.lon + lonVariation;
 
-        // Update map center to follow bus
-        setMapCenter([newLat, newLon]);
+            setMapCenter([newLat, newLon]);
 
-        return {
-          ...prevBus,
-          current_location: {
-            ...prevBus.current_location,
-            lat: newLat,
-            lon: newLon,
-            speed: Math.round(speedVariation),
-            updated: new Date().toISOString()
-          }
-        };
-      });
+            return {
+              ...prevBus,
+              current_location: {
+                ...prevBus.current_location,
+                lat: newLat,
+                lon: newLon,
+                speed: Math.round(speedVariation),
+                updated: new Date().toISOString()
+              }
+            };
+          });
+        });
     }, 3000);
 
     return () => clearInterval(interval);
