@@ -28,24 +28,31 @@ function getLocalIP() {
 // Routes
 app.get('/', (req, res) => {
   res.json({
-    message: 'Find Your Bus API',
+    message: 'Bus Tracking System API',
     version: '1.0.0',
     endpoints: {
-      'POST /api/locations': 'Update bus location',
-      'GET /api/locations/:device_id': 'Get bus location',
+      'POST /api/locations': 'Update bus location (for ESP32/Hardware)',
+      'GET /api/locations/:device_id': 'Get specific bus location',
       'GET /api/locations': 'Get all bus locations'
-    }
+    },
+    status: 'Server is running successfully! 🚀'
   });
 });
 
-// POST endpoint for ESP32 to send location data
+// POST endpoint for ESP32/Hardware to send location data
 app.post('/api/locations', (req, res) => {
   const { device_id, lat, lon, speed, driver_name, bus_number, status } = req.body;
   
   // Validate required fields
   if (!device_id || lat === undefined || lon === undefined) {
     return res.status(400).json({
-      error: 'Missing required fields: device_id, lat, lon'
+      error: 'Missing required fields: device_id, lat, lon',
+      example: {
+        device_id: 'BUS_101',
+        lat: 11.3580,
+        lon: 77.7120,
+        speed: 35
+      }
     });
   }
 
@@ -55,15 +62,16 @@ app.post('/api/locations', (req, res) => {
     lat: parseFloat(lat),
     lon: parseFloat(lon),
     speed: speed ? parseFloat(speed) : 0,
-    driver_name: driver_name || 'Unknown',
+    driver_name: driver_name || 'Unknown Driver',
     bus_number: bus_number || device_id,
     status: status || 'active',
-    updated: new Date().toISOString()
+    updated: new Date().toISOString(),
+    timestamp: Date.now()
   };
 
   busLocations.set(device_id, locationData);
 
-  console.log(`📍 Location update received from ${device_id}:`, {
+  console.log(`📍 Location update from ${device_id}:`, {
     lat: locationData.lat,
     lon: locationData.lon,
     speed: locationData.speed,
@@ -84,7 +92,8 @@ app.get('/api/locations/:device_id', (req, res) => {
   
   if (!location) {
     return res.status(404).json({
-      error: `Bus with device_id '${device_id}' not found`
+      error: `Bus with device_id '${device_id}' not found`,
+      available_buses: Array.from(busLocations.keys())
     });
   }
 
@@ -96,7 +105,8 @@ app.get('/api/locations', (req, res) => {
   const allLocations = Array.from(busLocations.values());
   res.json({
     count: allLocations.length,
-    buses: allLocations
+    buses: allLocations,
+    last_updated: allLocations.length > 0 ? Math.max(...allLocations.map(b => b.timestamp)) : null
   });
 });
 
@@ -105,7 +115,9 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    buses_tracked: busLocations.size
   });
 });
 
@@ -113,27 +125,52 @@ app.get('/health', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIP();
   
-  console.log('\n🚀 ===== SMART BUS TRACKING SERVER STARTED =====');
+  console.log('\n🚀 ===== BUS TRACKING SYSTEM STARTED =====');
   console.log('');
   console.log('✅ Server running at:');
-  console.log(`   📱 Local:    http://localhost:${PORT}`);
-  console.log(`   🌍 Network:  http://${localIP}:${PORT}`);
+  console.log(`   📱 http://localhost:${PORT}`);
+  console.log(`   🌍 Access from other devices: http://${localIP}:${PORT}`);
   console.log('');
-  console.log('📡 API Endpoints:');
-  console.log(`   POST http://${localIP}:${PORT}/api/locations`);
-  console.log(`   GET  http://${localIP}:${PORT}/api/locations/:device_id`);
-  console.log(`   GET  http://${localIP}:${PORT}/api/locations`);
+  console.log('📡 API Endpoints for Hardware Team (ESP32):');
+  console.log(`   👉 Example API: http://${localIP}:${PORT}/api/locations/BUS_101`);
+  console.log(`   📤 POST Location: http://${localIP}:${PORT}/api/locations`);
+  console.log(`   📥 GET Location: http://${localIP}:${PORT}/api/locations/:device_id`);
+  console.log(`   📋 GET All Buses: http://${localIP}:${PORT}/api/locations`);
   console.log('');
-  console.log('🔧 For Hardware Team (ESP32):');
-  console.log(`   👉 Use this URL: http://${localIP}:${PORT}/api/locations`);
-  console.log('   📝 POST JSON: {"device_id":"BUS_001","lat":11.3580,"lon":77.7120,"speed":35}');
+  console.log('🔧 Test Commands:');
+  console.log(`   curl -X POST http://${localIP}:${PORT}/api/locations \\`);
+  console.log('     -H "Content-Type: application/json" \\');
+  console.log('     -d \'{"device_id":"BUS_101","lat":11.3580,"lon":77.7120,"speed":35}\'');
   console.log('');
-  console.log('📊 Test endpoints:');
+  console.log(`   curl http://${localIP}:${PORT}/api/locations/BUS_101`);
+  console.log('');
+  console.log('📊 Dashboard:');
   console.log(`   🏠 Home: http://${localIP}:${PORT}`);
   console.log(`   ❤️  Health: http://${localIP}:${PORT}/health`);
   console.log('');
   console.log('===============================================\n');
 });
+
+// Add some demo data for testing
+setTimeout(() => {
+  const demoData = {
+    device_id: 'BUS_101',
+    lat: 11.3580,
+    lon: 77.7120,
+    speed: 35,
+    driver_name: 'Demo Driver',
+    bus_number: '101',
+    status: 'active'
+  };
+  
+  busLocations.set('BUS_101', {
+    ...demoData,
+    updated: new Date().toISOString(),
+    timestamp: Date.now()
+  });
+  
+  console.log('📍 Demo bus BUS_101 added for testing');
+}, 1000);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
