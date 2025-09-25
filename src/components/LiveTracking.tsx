@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { ArrowLeft, MapPin, Clock, Zap, Bell, Navigation, Gauge, Maximize2, Minimize2 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl } from 'react-leaflet';
+import { ArrowLeft, MapPin, Clock, Zap, Bell, Navigation, Gauge, Maximize2, Minimize2, Map, Satellite } from 'lucide-react';
 import { Bus, BusStop } from '../types';
 import { calculateDistance, calculateETA, formatETA } from '../utils/distanceCalculator';
 import { mockRoutes } from '../data/mockData';
@@ -65,6 +65,7 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
   const [bus, setBus] = useState(initialBus);
   const [alertsEnabled, setAlertsEnabled] = useState({ fiveMin: false, tenMin: false });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mapView, setMapView] = useState<'street' | 'satellite'>('street');
   const [mapCenter, setMapCenter] = useState<[number, number]>([bus.current_location.lat, bus.current_location.lon]);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -185,25 +186,54 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
           <div className="h-full min-h-[400px] lg:min-h-0">
             <MapContainer
               center={mapCenter}
-              zoom={14}
+              zoom={13}
               className="h-full w-full rounded-none lg:rounded-l-xl"
               ref={mapRef}
             >
-              <MapUpdater center={mapCenter} zoom={14} />
+              <MapUpdater center={mapCenter} zoom={13} />
               
-              {/* Satellite Tile Layer */}
-              <TileLayer
-                url="https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=demo"
-                attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a>'
-              />
+              <LayersControl position="topright">
+                {/* Street View Layer */}
+                <LayersControl.BaseLayer checked={mapView === 'street'} name="Street View">
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    maxZoom={19}
+                  />
+                </LayersControl.BaseLayer>
+                
+                {/* Satellite View Layer */}
+                <LayersControl.BaseLayer checked={mapView === 'satellite'} name="Satellite View">
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                    maxZoom={19}
+                  />
+                </LayersControl.BaseLayer>
+                
+                {/* Hybrid View Layer */}
+                <LayersControl.BaseLayer name="Hybrid View">
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                    maxZoom={19}
+                  />
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                    attribution=''
+                    maxZoom={19}
+                  />
+                </LayersControl.BaseLayer>
+              </LayersControl>
               
               {/* Route Polyline */}
               {routeCoordinates.length > 0 && (
                 <Polyline
                   positions={routeCoordinates}
                   color="#2563EB"
-                  weight={4}
+                  weight={5}
                   opacity={0.8}
+                  dashArray="10, 5"
                 />
               )}
               
@@ -214,10 +244,13 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
               >
                 <Popup>
                   <div className="text-center">
-                    <div className="font-bold text-blue-600">{bus.bus_number}</div>
-                    <div className="text-sm text-gray-600">{bus.driver_name}</div>
-                    <div className="text-sm">Speed: {bus.current_location.speed} km/h</div>
-                    <div className="text-sm capitalize">{bus.status}</div>
+                    <div className="font-bold text-blue-600 text-lg">Bus {bus.bus_number}</div>
+                    <div className="text-sm text-gray-600 mb-1">Driver: {bus.driver_name}</div>
+                    <div className="text-sm mb-1">Speed: {bus.current_location.speed} km/h</div>
+                    <div className="text-sm capitalize font-medium">{bus.status}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Last updated: {new Date(bus.current_location.updated).toLocaleTimeString()}
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -231,9 +264,15 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
                 >
                   <Popup>
                     <div className="text-center">
-                      <div className="font-bold text-green-600">{stop.name}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="font-bold text-green-600 text-base">{stop.name}</div>
+                      <div className="text-sm text-gray-600 mb-1">
                         ETA: {formatETA(stopsWithETA[index]?.eta || 0)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Scheduled: {stop.scheduledTime}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Stop #{index + 1}
                       </div>
                     </div>
                   </Popup>
@@ -244,6 +283,31 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
 
           {/* Map Overlay - Quick Stats */}
           <div className="absolute top-4 left-4 right-4 z-20">
+            {/* Map View Toggle */}
+            <div className="flex justify-end mb-2">
+              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-1 flex">
+                <button
+                  onClick={() => setMapView('street')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-1 ${
+                    mapView === 'street' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Map className="w-4 h-4" />
+                  Street
+                </button>
+                <button
+                  onClick={() => setMapView('satellite')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-1 ${
+                    mapView === 'satellite' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Satellite className="w-4 h-4" />
+                  Satellite
+                </button>
+              </div>
+            </div>
+            
+            {/* Quick Stats */}
             <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-4">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -263,6 +327,20 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
                     {bus.status.charAt(0).toUpperCase()}
                   </div>
                   <div className="text-xs text-gray-600">Status</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Current Location Info */}
+            <div className="mt-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3">
+              <div className="text-sm">
+                <div className="font-medium text-gray-900 mb-1">Current Location</div>
+                <div className="text-gray-600">
+                  Lat: {bus.current_location.lat.toFixed(4)}, 
+                  Lon: {bus.current_location.lon.toFixed(4)}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Updated: {new Date(bus.current_location.updated).toLocaleTimeString()}
                 </div>
               </div>
             </div>
