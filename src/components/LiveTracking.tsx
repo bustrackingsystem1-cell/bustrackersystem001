@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { ArrowLeft, MapPin, Clock, Zap, Bell, Navigation, Gauge, Maximize2, Minimize2, Map, Satellite } from 'lucide-react';
 import { Bus, BusStop } from '../types';
 import { calculateDistance, calculateETA, formatETA } from '../utils/distanceCalculator';
 import { mockRoutes } from '../data/mockData';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -183,48 +183,32 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* Map Container */}
         <div className={`${isFullscreen ? 'flex-1' : 'flex-1 lg:flex-[2]'} relative`}>
-          <div className="h-full min-h-[400px] lg:min-h-0">
+          <div className="h-full min-h-[500px] lg:min-h-[600px]">
             <MapContainer
               center={mapCenter}
-              zoom={13}
-              className="h-full w-full rounded-none lg:rounded-l-xl"
+              zoom={14}
+              style={{ height: '100%', width: '100%' }}
+              className="rounded-none lg:rounded-l-xl"
               ref={mapRef}
             >
-              <MapUpdater center={mapCenter} zoom={13} />
+              <MapUpdater center={mapCenter} zoom={14} />
               
-              <LayersControl position="topright">
-                {/* Street View Layer */}
-                <LayersControl.BaseLayer checked={mapView === 'street'} name="Street View">
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    maxZoom={19}
-                  />
-                </LayersControl.BaseLayer>
-                
-                {/* Satellite View Layer */}
-                <LayersControl.BaseLayer checked={mapView === 'satellite'} name="Satellite View">
-                  <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-                    maxZoom={19}
-                  />
-                </LayersControl.BaseLayer>
-                
-                {/* Hybrid View Layer */}
-                <LayersControl.BaseLayer name="Hybrid View">
-                  <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-                    maxZoom={19}
-                  />
-                  <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
-                    attribution=''
-                    maxZoom={19}
-                  />
-                </LayersControl.BaseLayer>
-              </LayersControl>
+              {/* Conditional Tile Layer based on mapView */}
+              {mapView === 'street' && (
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  maxZoom={19}
+                />
+              )}
+              
+              {mapView === 'satellite' && (
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                  maxZoom={19}
+                />
+              )}
               
               {/* Route Polyline */}
               {routeCoordinates.length > 0 && (
@@ -265,11 +249,11 @@ export function LiveTracking({ bus: initialBus, onBack }: LiveTrackingProps) {
                   <Popup>
                     <div className="text-center">
                       <div className="font-bold text-green-600 text-base">{stop.name}</div>
+                      <div className="text-sm text-blue-600 mb-1">
+                        Scheduled: {stop.scheduledTime}
+                      </div>
                       <div className="text-sm text-gray-600 mb-1">
                         ETA: {formatETA(stopsWithETA[index]?.eta || 0)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Scheduled: {stop.scheduledTime}
                       </div>
                       <div className="text-xs text-gray-400">
                         Stop #{index + 1}
