@@ -28,7 +28,7 @@ function getLocalIP() {
 // Routes
 app.get('/', (req, res) => {
   res.json({
-    message: 'Smart Bus Tracking System API',
+    message: 'Find Your Bus API',
     version: '1.0.0',
     endpoints: {
       'POST /api/locations': 'Update bus location',

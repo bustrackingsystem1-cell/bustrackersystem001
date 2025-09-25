@@ -1,4 +1,4 @@
-# Smart Bus Tracking System
+# Find Your Bus
 
 A real-time bus tracking system with Express.js backend and React frontend, designed to work with ESP32 hardware for live location updates.
 

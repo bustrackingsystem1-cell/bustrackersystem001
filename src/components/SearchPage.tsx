@@ -61,8 +61,8 @@ export function SearchPage({ onSearch }: SearchPageProps) {
               <MapPin className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Smart Bus</h1>
-              <p className="text-sm text-gray-500">Track your ride</p>
+              <h1 className="text-xl font-bold text-gray-900">Find Your Bus</h1>
+              <p className="text-sm text-gray-500">Real-time tracking</p>
             </div>
           </div>
         </div>
@@ -75,7 +75,7 @@ export function SearchPage({ onSearch }: SearchPageProps) {
             <div className="relative">
               <div className="flex items-center gap-3 mb-4">
                 <Search className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Plan Your Journey</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Find Your Bus</h2>
               </div>
               
               {/* From Location */}
