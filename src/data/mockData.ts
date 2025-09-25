@@ -45,6 +45,25 @@ export const mockBuses: Bus[] = [
   }
 ];
 
+// All available locations for autocomplete
+export const allLocations = [
+  'Boothapadi',
+  'Poonachi', 
+  'Chithar',
+  'Bhavani BS',
+  'Kasipalayam',
+  'Kalingarayanpalayam',
+  'KK-nagar',
+  'Lakshminagar',
+  'R.N.pudhur',
+  'Agraharam',
+  'Erode BS',
+  'Savitha & G.H',
+  'Diesel Shed',
+  'ITI',
+  'Mpnmjec'
+];
+
 // Popular search suggestions based on the route
 export const popularSearches = [
   { from: 'Boothapadi', to: 'Mpnmjec' },
